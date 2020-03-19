@@ -1,4 +1,4 @@
-from flask import Flask, redirect, render_template, jsonify, request
+from flask import Flask, redirect, render_template, jsonify, request, flash
 from flask_debugtoolbar import DebugToolbarExtension
 from surveys import satisfaction_survey
 
@@ -8,6 +8,7 @@ app.config['SECRET_KEY'] = "secret-key"
 debug = DebugToolbarExtension(app)
 
 responses = []
+finished = []
 
 @app.route('/')
 def index():
@@ -18,6 +19,13 @@ def index():
 
 @app.route('/questions/<question_number>')
 def questions(question_number):
+    next_question = len(responses)
+    if finished:
+        return redirect('/thankyou')
+    elif next_question != int(question_number):
+        flash("You're trying to access an invalid question!")
+        return redirect(f'/questions/{next_question}')
+
     return render_template('question.html', 
     question=satisfaction_survey.questions[int(question_number)].question,
     choice=satisfaction_survey.questions[int(question_number)].choices
@@ -27,5 +35,14 @@ def questions(question_number):
 def answers():
     responses.append(request.form['answer'])
     next_question = len(responses)
-    breakpoint()
+
+    if len(satisfaction_survey.questions) == next_question:
+        return redirect('/thankyou')
     return redirect(f'/questions/{next_question}')
+
+@app.route('/thankyou')
+def thankyou():
+    # Mutate original responses to be empty / don't create new responses variable
+    finished.append(True)
+    responses.clear()
+    return render_template('thankyou.html')
